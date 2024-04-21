@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime/pprof"
 
+	"github.com/bonnefoa/pg_buffer_viz/internal/db"
 	"github.com/bonnefoa/pg_buffer_viz/internal/util"
 
 	"github.com/sirupsen/logrus"
@@ -29,7 +31,19 @@ func versionFun(cmd *cobra.Command, args []string) {
 	os.Exit(0)
 }
 
+func fsmFun(cmd *cobra.Command, args []string) {
+	connectUrl := viper.GetString("connect-url")
+	timeout := viper.GetDuration("timeout")
+	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	db.Connect(ctx, connectUrl)
+	os.Exit(0)
+}
+
 func pgBufferVizFun(cmd *cobra.Command, args []string) {
+	os.Exit(0)
 }
 
 func main() {
@@ -38,6 +52,10 @@ func main() {
 		Run: pgBufferVizFun,
 	}
 	rootFlags := rootCmd.PersistentFlags()
+
+	util.SetCommonCliFlags(rootFlags, "info")
+	db.SetDbConfigFlags(rootFlags)
+
 	err := viper.BindPFlags(rootFlags)
 	util.FatalIf(err)
 
@@ -48,7 +66,18 @@ func main() {
 	}
 	rootCmd.AddCommand(versionCmd)
 
+	fsmCmd := &cobra.Command{
+		Use:   "fsm",
+		Run:   fsmFun,
+		Short: "FreeSpaceMap",
+	}
+	rootCmd.AddCommand(fsmCmd)
+
+	util.ConfigureViper()
+	cobra.OnInitialize(util.CommonInitialization)
+
 	defer pprof.StopCPUProfile()
+	defer util.DoMemoryProfile()
 	if err := rootCmd.Execute(); err != nil {
 		logrus.Fatalf("Root command failed: %v", err)
 	}
