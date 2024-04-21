@@ -7,6 +7,7 @@ import (
 	"runtime/pprof"
 
 	"github.com/bonnefoa/pg_buffer_viz/internal/db"
+	"github.com/bonnefoa/pg_buffer_viz/internal/render"
 	"github.com/bonnefoa/pg_buffer_viz/internal/util"
 
 	"github.com/sirupsen/logrus"
@@ -34,11 +35,18 @@ func versionFun(cmd *cobra.Command, args []string) {
 func fsmFun(cmd *cobra.Command, args []string) {
 	connectUrl := viper.GetString("connect-url")
 	timeout := viper.GetDuration("timeout")
+	relation := viper.GetString("relation")
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	db.Connect(ctx, connectUrl)
+	d := db.Connect(ctx, connectUrl)
+	d.FetchFSM(ctx, relation)
+
+	co := render.CanvasOptions{Width: 500, Height: 500, FileName: "output.svg"}
+	c := render.Start(co)
+	c.End()
+
 	os.Exit(0)
 }
 
