@@ -36,20 +36,18 @@ func versionFun(cmd *cobra.Command, args []string) {
 func fsmFun(cmd *cobra.Command, args []string) {
 	connectUrl := viper.GetString("connect-url")
 	timeout := viper.GetDuration("timeout")
+	output := viper.GetString("output")
 	relation := viper.GetString("relation")
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	d := db.Connect(ctx, connectUrl)
-	fsm := d.FetchFSM(ctx, relation)
+	table := d.FetchTable(ctx, relation)
 
-	co := render.CanvasOptions{FileName: "output.svg", BlockHeight: 30, BlockWidth: 20}
-	w, h := bufferviz.GetSize(co, fsm)
-	c := render.Start(co, w, h)
-	bufferviz.DrawRelation(c, fsm)
-
-	c.End()
+	canvas := render.NewCanvas(output)
+	b := bufferviz.NewBufferViz(canvas, 30, 20)
+	b.DrawTable(table)
 
 	os.Exit(0)
 }
@@ -67,6 +65,7 @@ func main() {
 
 	util.SetCommonCliFlags(rootFlags, "info")
 	db.SetDbConfigFlags(rootFlags)
+	rootFlags.String("output", "output.svg", "Output filename")
 
 	err := viper.BindPFlags(rootFlags)
 	util.FatalIf(err)

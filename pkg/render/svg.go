@@ -8,32 +8,21 @@ import (
 	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
 )
 
-type CanvasOptions struct {
-	FileName string
-
-	BlockHeight int
-	BlockWidth  int
-}
-
 type Canvas struct {
 	*svg.SVG
-	Options CanvasOptions
-	file    *os.File
-	bw      *bufio.Writer
+	file *os.File
+	bw   *bufio.Writer
 }
 
-func Start(options CanvasOptions, width int, height int) *Canvas {
+func NewCanvas(filename string) *Canvas {
 	var c Canvas
 	var err error
 
-	c.file, err = os.Create(options.FileName)
+	c.file, err = os.Create(filename)
 	util.FatalIf(err)
 	c.bw = bufio.NewWriter(c.file)
 
 	c.SVG = svg.New(c.bw)
-	c.Options = options
-
-	c.Start(width, height)
 	return &c
 }
 

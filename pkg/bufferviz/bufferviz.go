@@ -6,45 +6,74 @@ import (
 
 	"github.com/bonnefoa/pg_buffer_viz/pkg/db"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/render"
+	"github.com/sirupsen/logrus"
 )
 
-func GetSize(co render.CanvasOptions, fsr db.RelationFreeSpace) (int, int) {
-	numBuffers := len(fsr.FreeSpace)
+type BufferViz struct {
+	canvas *render.Canvas
+
+	BlockHeight int
+	BlockWidth  int
+
+	x int
+	y int
+}
+
+func NewBufferViz(canvas *render.Canvas, blockHeight int, blockWidth int) BufferViz {
+	b := BufferViz{BlockHeight: blockHeight, BlockWidth: blockWidth}
+	b.canvas = canvas
+	b.x = 0
+	b.y = 0
+	return b
+}
+
+func (b *BufferViz) GetSize(table db.Table) (int, int) {
+	numBuffers := len(table.Fsm)
 	blocksPerLine := int(math.Sqrt(float64(numBuffers))) + 1
 
-	relationWidth := blocksPerLine * co.BlockWidth
-	relationHeight := blocksPerLine * (co.BlockHeight + 1)
+	relationWidth := blocksPerLine * b.BlockWidth
+	relationHeight := blocksPerLine * (b.BlockHeight + 1)
 	return relationWidth + 2, relationHeight + 2
 }
 
-func DrawRelation(c *render.Canvas, fsr db.RelationFreeSpace) {
-	o := c.Options
+func (b *BufferViz) GetFsmColor(fsmValue int16) string {
+	percent := int((float64(fsmValue) / 8192) * 100)
+	return fmt.Sprintf("fill: color-mix(in srgb, green %d%%, red)", percent)
+}
 
-	numBuffers := len(fsr.FreeSpace)
+func (b *BufferViz) DrawName(blocksPerLine int, relation db.Relation) {
+	relationWidth := blocksPerLine * b.BlockWidth
+	xPos := b.x + relationWidth/2
+	yPos := b.y + b.BlockHeight/2
+	b.canvas.Text(xPos, yPos, relation.Name, "text-anchor:middle;font-size:20px")
+}
+
+func (b *BufferViz) DrawRelation(relation db.Relation) (int, int) {
+	numBuffers := len(relation.Fsm)
 	blocksPerLine := int(math.Sqrt(float64(numBuffers))) + 1
+	lines := numBuffers / blocksPerLine
 
-	relationWidth := blocksPerLine * o.BlockWidth
+	b.DrawName(blocksPerLine, relation)
 
-	c.Text(relationWidth/2, o.BlockHeight/2, fsr.Name, "text-anchor:middle;font-size:20px;fill:black")
+	xOffset := b.x
+	yOffset := b.y + b.BlockHeight
 
-	xOffset := 0
-	yOffset := o.BlockHeight
-
-	c.Gstyle("stroke-width:2;stroke:black;fill:white")
+	b.canvas.Gstyle("stroke-width:2;stroke:black;fill:white")
 	for line := range blocksPerLine {
 		for column := range blocksPerLine {
 			bufno := line*blocksPerLine + column
-			if bufno > numBuffers {
+			if bufno >= numBuffers {
 				break
 			}
-			x := xOffset + column*o.BlockWidth
-			y := yOffset + line*o.BlockHeight
-			c.Rect(x, y, o.BlockWidth, o.BlockHeight)
+			x := xOffset + column*b.BlockWidth
+			y := yOffset + line*b.BlockHeight
+			style := b.GetFsmColor(relation.Fsm[bufno])
+			b.canvas.Rect(x, y, b.BlockWidth, b.BlockHeight, style)
 		}
 	}
-	c.Gend()
+	b.canvas.Gend()
 
-	c.Gstyle("text-anchor:middle;font-size:20px;fill:black;dominant-baseline=middle")
+	b.canvas.Gstyle("text-anchor:middle;font-size:20px;fill:black;dominant-baseline=middle")
 	for line := range blocksPerLine {
 		for column := range blocksPerLine {
 			bufno := line*blocksPerLine + column
@@ -52,12 +81,33 @@ func DrawRelation(c *render.Canvas, fsr db.RelationFreeSpace) {
 				break
 			}
 			if bufno%50 == 0 {
-				x := xOffset + column*o.BlockWidth + o.BlockWidth/2
-				y := yOffset + line*o.BlockHeight + o.BlockHeight/2
-				c.Text(x, y, fmt.Sprint(bufno))
+				x := xOffset + column*b.BlockWidth + b.BlockWidth/2
+				y := yOffset + line*b.BlockHeight + b.BlockHeight/2
+				b.canvas.Text(x, y, fmt.Sprint(bufno))
 			}
-
 		}
 	}
-	c.Gend()
+	b.canvas.Gend()
+	return blocksPerLine * b.BlockWidth, lines * b.BlockHeight
+}
+
+func (b *BufferViz) DrawTable(table db.Table) {
+	w, h := b.GetSize(table)
+	b.canvas.Start(w, h)
+
+	maxHeight := 0
+	for _, index := range table.Indexes {
+		logrus.Infof("Drawing index %s", index.Name)
+		width, height := b.DrawRelation(index)
+		b.x += width
+		if height > maxHeight {
+			maxHeight = height
+		}
+	}
+	b.x = 0
+	b.y = maxHeight + b.BlockHeight
+	logrus.Infof("Drawing table %s", table.Name)
+	b.DrawRelation(table.Relation)
+
+	b.canvas.End()
 }
