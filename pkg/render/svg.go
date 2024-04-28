@@ -5,22 +5,24 @@ import (
 	"os"
 
 	svg "github.com/ajstarks/svgo"
-	"github.com/bonnefoa/pg_buffer_viz/internal/util"
+	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
 )
+
+type CanvasOptions struct {
+	FileName string
+
+	BlockHeight int
+	BlockWidth  int
+}
 
 type Canvas struct {
 	*svg.SVG
-	file *os.File
-	bw   *bufio.Writer
+	Options CanvasOptions
+	file    *os.File
+	bw      *bufio.Writer
 }
 
-type CanvasOptions struct {
-	Width    int
-	Height   int
-	FileName string
-}
-
-func Start(options CanvasOptions) *Canvas {
+func Start(options CanvasOptions, width int, height int) *Canvas {
 	var c Canvas
 	var err error
 
@@ -29,13 +31,9 @@ func Start(options CanvasOptions) *Canvas {
 	c.bw = bufio.NewWriter(c.file)
 
 	c.SVG = svg.New(c.bw)
+	c.Options = options
 
-	c.Start(options.Width, options.Width)
-	width := options.Width
-	height := options.Height
-	c.Circle(width/2, height/2, 100)
-	c.Text(width/2, height/2, "Hello, SVG", "text-anchor:middle;font-size:30px;fill:white")
-
+	c.Start(width, height)
 	return &c
 }
 

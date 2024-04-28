@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 
-	"github.com/bonnefoa/pg_buffer_viz/internal/util"
+	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
 	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
@@ -16,6 +16,11 @@ type DbConnection struct {
 type FreeSpace struct {
 	Blkno int
 	Avail int
+}
+
+type RelationFreeSpace struct {
+	Name      string
+	FreeSpace []FreeSpace
 }
 
 func SetDbConfigFlags(fs *pflag.FlagSet) {
@@ -31,11 +36,14 @@ func Connect(ctx context.Context, connectUrl string) *DbConnection {
 	return &DbConnection{conn}
 }
 
-func (d *DbConnection) FetchFSM(ctx context.Context, relation string) []FreeSpace {
+func (d *DbConnection) FetchFSM(ctx context.Context, relation string) RelationFreeSpace {
 	rows, err := d.Query(ctx, "select blkno, avail from pg_freespace($1)", relation)
 	util.FatalIf(err)
 	fs, err := pgx.CollectRows(rows, pgx.RowToStructByName[FreeSpace])
 	util.FatalIf(err)
 
-	return fs
+	return RelationFreeSpace{
+		Name:      relation,
+		FreeSpace: fs,
+	}
 }

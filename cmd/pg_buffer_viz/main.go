@@ -6,9 +6,10 @@ import (
 	"os"
 	"runtime/pprof"
 
-	"github.com/bonnefoa/pg_buffer_viz/internal/db"
-	"github.com/bonnefoa/pg_buffer_viz/internal/render"
-	"github.com/bonnefoa/pg_buffer_viz/internal/util"
+	"github.com/bonnefoa/pg_buffer_viz/pkg/bufferviz"
+	"github.com/bonnefoa/pg_buffer_viz/pkg/db"
+	"github.com/bonnefoa/pg_buffer_viz/pkg/render"
+	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -41,10 +42,13 @@ func fsmFun(cmd *cobra.Command, args []string) {
 	defer cancel()
 
 	d := db.Connect(ctx, connectUrl)
-	d.FetchFSM(ctx, relation)
+	fsm := d.FetchFSM(ctx, relation)
 
-	co := render.CanvasOptions{Width: 500, Height: 500, FileName: "output.svg"}
-	c := render.Start(co)
+	co := render.CanvasOptions{FileName: "output.svg", BlockHeight: 30, BlockWidth: 20}
+	w, h := bufferviz.GetSize(co, fsm)
+	c := render.Start(co, w, h)
+	bufferviz.DrawRelation(c, fsm)
+
 	c.End()
 
 	os.Exit(0)
