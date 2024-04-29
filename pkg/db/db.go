@@ -6,7 +6,6 @@ import (
 	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
 	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/pflag"
 )
 
 type DbConnection struct {
@@ -32,11 +31,6 @@ type Toast struct {
 type RelationFreeSpace struct {
 	Name string
 	Fsm  []int
-}
-
-func SetDbConfigFlags(fs *pflag.FlagSet) {
-	fs.String("connect-url", "", "Connection url to PostgreSQL db")
-	fs.String("relation", "", "Target relation")
 }
 
 func Connect(ctx context.Context, connectUrl string) *DbConnection {

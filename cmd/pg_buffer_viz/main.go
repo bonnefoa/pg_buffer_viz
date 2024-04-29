@@ -3,11 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"os/signal"
 	"runtime/pprof"
+	"syscall"
 
 	"github.com/bonnefoa/pg_buffer_viz/pkg/bufferviz"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/db"
+	"github.com/bonnefoa/pg_buffer_viz/pkg/httpserver"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/render"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
 
@@ -33,23 +37,52 @@ func versionFun(cmd *cobra.Command, args []string) {
 	os.Exit(0)
 }
 
-func fsmFun(cmd *cobra.Command, args []string) {
-	connectUrl := viper.GetString("connect-url")
+func generateFun(cmd *cobra.Command, args []string) {
+	dbConfig := db.GetDbConfigCli()
+
 	timeout := viper.GetDuration("timeout")
 	output := viper.GetString("output")
-	relation := viper.GetString("relation")
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	d := db.Connect(ctx, connectUrl)
-	table := d.FetchTable(ctx, relation)
+	d := db.Connect(ctx, dbConfig.ConnectUrl)
+	table := d.FetchTable(ctx, dbConfig.Relation)
 
 	canvas := render.NewCanvas(output)
 	b := bufferviz.NewBufferViz(canvas, 30, 20)
 	b.DrawTable(table)
 
 	os.Exit(0)
+}
+
+func handleSignals(cancel context.CancelFunc) {
+	sigIn := make(chan os.Signal, 100)
+	signal.Notify(sigIn)
+	for sig := range sigIn {
+		switch sig {
+		case syscall.SIGINT, syscall.SIGTERM:
+			logrus.Errorf("Caught signal '%s' (%d); terminating.", sig, sig)
+			cancel()
+		}
+	}
+}
+
+func serveFun(cmd *cobra.Command, args []string) {
+	ctx, cancel := context.WithCancel(context.Background())
+	go handleSignals(cancel)
+
+	httpServerConfCli := httpserver.GetHttpServerConfigCli()
+	_, err := httpserver.StartHttpServer(ctx, &httpServerConfCli)
+	if err != nil {
+		logrus.Fatalf("Error starting http server: %s", err)
+	}
+
+	go func() {
+		logrus.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
+	<-ctx.Done()
 }
 
 func pgBufferVizFun(cmd *cobra.Command, args []string) {
@@ -61,14 +94,6 @@ func main() {
 		Use: "pg_buffer_viz",
 		Run: pgBufferVizFun,
 	}
-	rootFlags := rootCmd.PersistentFlags()
-
-	util.SetCommonCliFlags(rootFlags, "info")
-	db.SetDbConfigFlags(rootFlags)
-	rootFlags.String("output", "output.svg", "Output filename")
-
-	err := viper.BindPFlags(rootFlags)
-	util.FatalIf(err)
 
 	versionCmd := &cobra.Command{
 		Use:   "version",
@@ -77,12 +102,31 @@ func main() {
 	}
 	rootCmd.AddCommand(versionCmd)
 
-	fsmCmd := &cobra.Command{
-		Use:   "fsm",
-		Run:   fsmFun,
-		Short: "FreeSpaceMap",
+	generate := &cobra.Command{
+		Use:   "generate",
+		Run:   generateFun,
+		Short: "Generate visualisation for a given relation",
 	}
-	rootCmd.AddCommand(fsmCmd)
+	serve := &cobra.Command{
+		Use:   "serve",
+		Run:   serveFun,
+		Short: "Start the http server",
+	}
+	rootCmd.AddCommand(generate)
+	rootCmd.AddCommand(serve)
+
+	// Setup Flags
+	rootFlags := rootCmd.PersistentFlags()
+	util.SetCommonCliFlags(rootFlags, "info")
+	db.SetDbConfigFlags(rootFlags)
+	rootFlags.String("output", "output.svg", "Output filename")
+	err := viper.BindPFlags(rootFlags)
+	util.FatalIf(err)
+
+	serveFlags := serve.Flags()
+	httpserver.SetHttpServerConfigFlags(serveFlags)
+	err = viper.BindPFlags(serveFlags)
+	util.FatalIf(err)
 
 	util.ConfigureViper()
 	cobra.OnInitialize(util.CommonInitialization)

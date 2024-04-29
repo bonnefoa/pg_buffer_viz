@@ -132,3 +132,4 @@ tags
 TODO
 /pg_buffer_viz
 dist/
+tmp/
