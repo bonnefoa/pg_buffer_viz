@@ -2,20 +2,25 @@ package render
 
 import (
 	"bufio"
+	"io"
 	"os"
 
 	svg "github.com/ajstarks/svgo"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
 )
 
-type Canvas struct {
+type FileCanvas struct {
 	*svg.SVG
 	file *os.File
 	bw   *bufio.Writer
 }
 
-func NewCanvas(filename string) *Canvas {
-	var c Canvas
+type Canvas struct {
+	*svg.SVG
+}
+
+func NewFileCanvas(filename string) *FileCanvas {
+	var c FileCanvas
 	var err error
 
 	c.file, err = os.Create(filename)
@@ -26,7 +31,17 @@ func NewCanvas(filename string) *Canvas {
 	return &c
 }
 
+func NewCanvas(w io.Writer) *Canvas {
+	var c Canvas
+	c.SVG = svg.New(w)
+	return &c
+}
+
 func (c *Canvas) End() {
+	c.SVG.End()
+}
+
+func (c *FileCanvas) End() {
 	c.SVG.End()
 	err := c.bw.Flush()
 	util.FatalIf(err)

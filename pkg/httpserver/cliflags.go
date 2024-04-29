@@ -1,6 +1,8 @@
 package httpserver
 
 import (
+	"time"
+
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -8,6 +10,7 @@ import (
 type HttpServerConfigCli struct {
 	ListenAddress   string
 	HttpProfAddress string
+	Timeout         time.Duration
 	Debug           bool
 }
 
@@ -22,5 +25,6 @@ func GetHttpServerConfigCli() HttpServerConfigCli {
 	h.ListenAddress = viper.GetString("listen-address")
 	h.HttpProfAddress = viper.GetString("http-prof-address")
 	h.Debug = viper.GetBool("http-debug")
+	h.Timeout = viper.GetDuration("timeout")
 	return h
 }

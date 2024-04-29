@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"math"
 
+	svg "github.com/ajstarks/svgo"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/db"
-	"github.com/bonnefoa/pg_buffer_viz/pkg/render"
 	"github.com/sirupsen/logrus"
 )
 
 type BufferViz struct {
-	canvas *render.Canvas
+	canvas *svg.SVG
 
 	BlockHeight int
 	BlockWidth  int
@@ -19,7 +19,7 @@ type BufferViz struct {
 	y int
 }
 
-func NewBufferViz(canvas *render.Canvas, blockHeight int, blockWidth int) BufferViz {
+func NewBufferViz(canvas *svg.SVG, blockHeight int, blockWidth int) BufferViz {
 	b := BufferViz{BlockHeight: blockHeight, BlockWidth: blockWidth}
 	b.canvas = canvas
 	b.x = 0

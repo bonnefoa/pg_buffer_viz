@@ -41,50 +41,54 @@ func Connect(ctx context.Context, connectUrl string) *DbConnection {
 	return &DbConnection{conn}
 }
 
-func (d *DbConnection) FetchFsm(ctx context.Context, relationName string) []int16 {
+func (d *DbConnection) FetchFsm(ctx context.Context, relationName string) ([]int16, error) {
 	rows, err := d.Query(ctx, "select avail from pg_freespace($1)", relationName)
-	util.FatalIf(err)
-	avails, err := pgx.CollectRows(rows, pgx.RowTo[int16])
-	util.FatalIf(err)
-	return avails
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[int16])
 }
 
-func (d *DbConnection) FetchRelation(ctx context.Context, relationName string) Relation {
-	avails := d.FetchFsm(ctx, relationName)
+func (d *DbConnection) FetchRelation(ctx context.Context, relationName string) (Relation, error) {
+	avails, err := d.FetchFsm(ctx, relationName)
 	r := Relation{
 		Name: relationName,
 		Fsm:  avails,
 	}
-	return r
+	return r, err
 }
 
-func (d *DbConnection) FetchIndexes(ctx context.Context, relationName string) []Relation {
+func (d *DbConnection) FetchIndexes(ctx context.Context, relationName string) ([]Relation, error) {
 	rows, err := d.Query(ctx, "select indexname from pg_indexes where tablename=$1", relationName)
-	util.FatalIf(err)
+	if err != nil {
+		return nil, err
+	}
 	indexNames, err := pgx.CollectRows(rows, pgx.RowTo[string])
-	util.FatalIf(err)
+	if err != nil {
+		return nil, err
+	}
 	indexes := make([]Relation, 0)
 	for _, indexName := range indexNames {
-		r := d.FetchRelation(ctx, indexName)
+		r, err := d.FetchRelation(ctx, indexName)
+		if err != nil {
+			return nil, err
+		}
 		indexes = append(indexes, r)
 	}
-	return indexes
+	return indexes, nil
 }
 
-func (d *DbConnection) FetchTable(ctx context.Context, relationName string) Table {
-	r := d.FetchRelation(ctx, relationName)
-	indexes := d.FetchIndexes(ctx, relationName)
-	return Table{Relation: r, Indexes: indexes}
+func (d *DbConnection) FetchTable(ctx context.Context, relationName string) (table Table, err error) {
+	logrus.Infof("Fetch buffer information for table '%s'", relationName)
+	r, err := d.FetchRelation(ctx, relationName)
+	if err != nil {
+		return
+	}
+	table.Relation = r
+	indexes, err := d.FetchIndexes(ctx, relationName)
+	if err != nil {
+		return
+	}
+	table.Indexes = indexes
+	return
 }
-
-// func (d *DbConnection) GetIndexes(ctx context.Context, relation string) RelationFreeSpace {
-// 	rows, err := d.Query(ctx, "select blkno, avail from pg_freespace($1)", relation)
-// 	util.FatalIf(err)
-// 	fs, err := pgx.CollectRows(rows, pgx.RowToStructByName[FreeSpace])
-// 	util.FatalIf(err)
-//
-// 	return RelationFreeSpace{
-// 		Name: relation,
-// 		Fsm:  fs,
-// 	}
-// }

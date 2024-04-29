@@ -47,10 +47,13 @@ func generateFun(cmd *cobra.Command, args []string) {
 	defer cancel()
 
 	d := db.Connect(ctx, dbConfig.ConnectUrl)
-	table := d.FetchTable(ctx, dbConfig.Relation)
+	table, err := d.FetchTable(ctx, dbConfig.Relation)
+	if err != nil {
+		logrus.Fatalf("Error when fetching table information: %s", err)
+	}
 
-	canvas := render.NewCanvas(output)
-	b := bufferviz.NewBufferViz(canvas, 30, 20)
+	canvas := render.NewFileCanvas(output)
+	b := bufferviz.NewBufferViz(canvas.SVG, 30, 20)
 	b.DrawTable(table)
 
 	os.Exit(0)
