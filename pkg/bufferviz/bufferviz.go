@@ -27,13 +27,51 @@ func NewBufferViz(canvas *svg.SVG, blockHeight int, blockWidth int) BufferViz {
 	return b
 }
 
-func (b *BufferViz) GetSize(table db.Table) (int, int) {
-	numBuffers := len(table.Fsm)
+func (b *BufferViz) getRelationDrawSize(relation db.Relation) (int, int) {
+	numBuffers := len(relation.Fsm)
 	blocksPerLine := int(math.Sqrt(float64(numBuffers))) + 1
+	lines := numBuffers / blocksPerLine
+	return blocksPerLine * b.BlockWidth, lines * b.BlockHeight
+}
 
-	relationWidth := blocksPerLine * b.BlockWidth
-	relationHeight := blocksPerLine * (b.BlockHeight + 1)
-	return relationWidth + 2, relationHeight + 2
+func (b *BufferViz) getAncillaryRelationDrawSize(table db.Table) (int, int) {
+	maxHeight := 0
+	drawWidth := 0
+
+	for _, index := range table.Indexes {
+		width, height := b.getRelationDrawSize(index)
+		drawWidth += width + b.BlockWidth
+		if height > maxHeight {
+			maxHeight = height
+		}
+	}
+
+	if table.Toast != nil {
+		toast := table.Toast
+		width, height := b.getRelationDrawSize(toast.Relation)
+		drawWidth += width + b.BlockWidth
+		if height > maxHeight {
+			maxHeight = height
+		}
+
+		width, height = b.getRelationDrawSize(toast.Index)
+		drawWidth += width + b.BlockWidth
+		if height > maxHeight {
+			maxHeight = height
+		}
+	}
+
+	return drawWidth, maxHeight
+}
+
+func (b *BufferViz) getDrawSize(table db.Table) (int, int) {
+	tableWidth, tableHeight := b.getRelationDrawSize(table.Relation)
+	ancillaryWidth, ancillaryHeigh := b.getAncillaryRelationDrawSize(table)
+	totalWidth := tableWidth
+	if ancillaryWidth > totalWidth {
+		totalWidth = ancillaryWidth
+	}
+	return ancillaryWidth + 2, tableHeight + ancillaryHeigh + 2
 }
 
 func (b *BufferViz) GetFsmColor(fsmValue int16) string {
@@ -92,7 +130,7 @@ func (b *BufferViz) DrawRelation(relation db.Relation) (int, int) {
 }
 
 func (b *BufferViz) DrawTable(table db.Table) {
-	w, h := b.GetSize(table)
+	w, h := b.getDrawSize(table)
 	b.canvas.Start(w, h)
 
 	// Track height to know the position for the relation
@@ -107,12 +145,22 @@ func (b *BufferViz) DrawTable(table db.Table) {
 		}
 	}
 
-	//logrus.Infof("Drawing toast %s", index.Name)
-	//width, height := b.DrawRelation(index)
-	//b.x += width + b.BlockWidth
-	//if height > maxHeight {
-	//	maxHeight = height
-	//}
+	if table.Toast != nil {
+		toast := table.Toast
+		logrus.Infof("Drawing toast %s", toast.Name)
+		width, height := b.DrawRelation(toast.Relation)
+		b.x += width + b.BlockWidth
+		if height > maxHeight {
+			maxHeight = height
+		}
+
+		logrus.Infof("Drawing toast index %s", toast.Index.Name)
+		width, height = b.DrawRelation(toast.Index)
+		b.x += width + b.BlockWidth
+		if height > maxHeight {
+			maxHeight = height
+		}
+	}
 
 	b.x = 0
 	b.y = maxHeight + b.BlockHeight*2

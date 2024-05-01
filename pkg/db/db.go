@@ -137,10 +137,9 @@ WHERE t.oid = t_oids.oid AND ti.oid = t_oids.idx_oid`, relationName)
 		return nil, eris.Wrap(err, "Toast query failed")
 	}
 
-	toastResponse, err := pgx.CollectOneRow[ToastResponse](rows, pgx.RowTo[ToastResponse])
+	toastResponse, err := pgx.CollectOneRow(rows, pgx.RowToStructByPos[ToastResponse])
 	if err != nil {
-		// No toast found
-		return nil, nil
+		return nil, eris.Wrap(err, "Error collecting toast response")
 	}
 
 	relation, err := d.FetchRelationFromOid(ctx, toastResponse.RelationName, toastResponse.ToastOid)
