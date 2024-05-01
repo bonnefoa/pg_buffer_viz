@@ -47,7 +47,7 @@ func generateFun(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	d, err := db.Connect(ctx, dbConfig.ConnectUrl)
+	d, err := db.NewDbPool(ctx, dbConfig.ConnectUrl)
 	if err != nil {
 		logrus.Fatalf("Error connecting to PostgreSQL: %s", eris.ToString(err, true))
 	}
