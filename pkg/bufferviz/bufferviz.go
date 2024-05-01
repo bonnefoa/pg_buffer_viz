@@ -95,17 +95,27 @@ func (b *BufferViz) DrawTable(table db.Table) {
 	w, h := b.GetSize(table)
 	b.canvas.Start(w, h)
 
+	// Track height to know the position for the relation
 	maxHeight := 0
+
 	for _, index := range table.Indexes {
 		logrus.Infof("Drawing index %s", index.Name)
 		width, height := b.DrawRelation(index)
-		b.x += width
+		b.x += width + b.BlockWidth
 		if height > maxHeight {
 			maxHeight = height
 		}
 	}
+
+	//logrus.Infof("Drawing toast %s", index.Name)
+	//width, height := b.DrawRelation(index)
+	//b.x += width + b.BlockWidth
+	//if height > maxHeight {
+	//	maxHeight = height
+	//}
+
 	b.x = 0
-	b.y = maxHeight + b.BlockHeight
+	b.y = maxHeight + b.BlockHeight*2
 	logrus.Infof("Drawing table %s", table.Name)
 	b.DrawRelation(table.Relation)
 

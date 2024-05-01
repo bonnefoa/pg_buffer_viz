@@ -5,8 +5,10 @@ go 1.22.2
 require (
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
 	github.com/gin-gonic/gin v1.9.1
+	github.com/go-errors/errors v1.5.1
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/pkg/errors v0.9.1
+	github.com/rotisserie/eris v0.5.4
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5

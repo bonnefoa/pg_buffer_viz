@@ -10,6 +10,7 @@ import (
 	"github.com/bonnefoa/pg_buffer_viz/pkg/db"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/render"
 	"github.com/gin-gonic/gin"
+	"github.com/rotisserie/eris"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,30 +30,34 @@ func (f *PgBufferVizHttpServer) statsRoute(c *gin.Context) {
 }
 
 func (f *PgBufferVizHttpServer) bufferVizRoute(c *gin.Context) {
-	c.Header("Content-Type", "image/svg+xml")
 	canvas := render.NewCanvas(c.Writer)
 	b := bufferviz.NewBufferViz(canvas.SVG, 30, 20)
 	logrus.Info(c.Params)
 	tableName := c.Params.ByName("table")
 
 	ctx := c.Request.Context()
-	d := db.Connect(ctx, f.dbConfig.ConnectUrl)
+	d, err := db.Connect(ctx, f.dbConfig.ConnectUrl)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
 	table, err := d.FetchTable(ctx, tableName)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 	b.DrawTable(table)
-
+	c.Header("Content-Type", "image/svg+xml")
 }
 
 func ErrorHandler(c *gin.Context) {
 	c.Next()
-	for _, err := range c.Errors {
-		logrus.Error(err)
+	if len(c.Errors) > 0 {
+		err := c.Errors.Last()
+		errJson := eris.ToJSON(err.Unwrap(), true)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, errJson)
+		logrus.Error(eris.ToString(err, true))
 	}
-	// TODO error message
-	// c.JSON(http.StatusInternalServerError, "")
 }
 
 func (f *PgBufferVizHttpServer) setupRouter() *gin.Engine {
@@ -76,14 +81,14 @@ func startHttpServer(ctx context.Context, listener net.Listener, srv *http.Serve
 	go func() {
 		logrus.Infof("Starting http server on %s", srv.Addr)
 		if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
-			logrus.Fatalf("error listening: %s", err)
+			logrus.Fatalf("error listening: %s", eris.ToString(err, true))
 		}
 	}()
 	<-ctx.Done()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		logrus.Fatalf("Server forced to shutdown: %s", err)
+		logrus.Fatalf("Server forced to shutdown: %s", eris.ToString(err, true))
 	}
 	logrus.Info("Exiting http server")
 }

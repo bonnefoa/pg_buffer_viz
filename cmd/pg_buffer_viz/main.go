@@ -14,6 +14,7 @@ import (
 	"github.com/bonnefoa/pg_buffer_viz/pkg/httpserver"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/render"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
+	"github.com/rotisserie/eris"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -46,10 +47,13 @@ func generateFun(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	d := db.Connect(ctx, dbConfig.ConnectUrl)
+	d, err := db.Connect(ctx, dbConfig.ConnectUrl)
+	if err != nil {
+		logrus.Fatalf("Error connecting to PostgreSQL: %s", eris.ToString(err, true))
+	}
 	table, err := d.FetchTable(ctx, dbConfig.Relation)
 	if err != nil {
-		logrus.Fatalf("Error when fetching table information: %s", err)
+		logrus.Fatalf("Error when fetching table information: %s", eris.ToString(err, true))
 	}
 
 	canvas := render.NewFileCanvas(output)
@@ -78,7 +82,7 @@ func serveFun(cmd *cobra.Command, args []string) {
 	httpServerConfCli := httpserver.GetHttpServerConfigCli()
 	_, err := httpserver.StartHttpServer(ctx, &httpServerConfCli)
 	if err != nil {
-		logrus.Fatalf("Error starting http server: %s", err)
+		logrus.Fatalf("Error starting http server: %s", eris.ToString(err, true))
 	}
 
 	go func() {
@@ -137,6 +141,6 @@ func main() {
 	defer pprof.StopCPUProfile()
 	defer util.DoMemoryProfile()
 	if err := rootCmd.Execute(); err != nil {
-		logrus.Fatalf("Root command failed: %v", err)
+		logrus.Fatalf("Root command failed: %v", eris.ToString(err, true))
 	}
 }
