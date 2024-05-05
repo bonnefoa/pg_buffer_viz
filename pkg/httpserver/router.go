@@ -22,7 +22,9 @@ func (s *HttpServer) statsRoute(c *gin.Context) {
 
 func (s *HttpServer) bufferVizRoute(c *gin.Context) {
 	canvas := render.NewCanvas(c.Writer)
-	b := bufferviz.NewBufferViz(canvas.SVG, 30, 20)
+	b := bufferviz.NewBufferViz(canvas.SVG,
+		bufferviz.Size{Width: 30, Height: 20},
+		bufferviz.Size{Width: 3, Height: 3})
 	logrus.Info(c.Params)
 	tableName := c.Params.ByName("table")
 

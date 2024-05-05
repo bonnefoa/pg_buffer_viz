@@ -57,7 +57,7 @@ func generateFun(cmd *cobra.Command, args []string) {
 	}
 
 	canvas := render.NewFileCanvas(output)
-	b := bufferviz.NewBufferViz(canvas.SVG, 30, 20)
+	b := bufferviz.NewBufferViz(canvas.SVG, bufferviz.Size{Width: 30, Height: 30}, bufferviz.Size{Width: 3, Height: 3})
 	b.DrawTable(table)
 
 	os.Exit(0)

@@ -1,100 +1,114 @@
 package bufferviz
 
 import (
+	"cmp"
 	"fmt"
 	"math"
+	"slices"
 
 	svg "github.com/ajstarks/svgo"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/db"
 	"github.com/sirupsen/logrus"
 )
 
-type BufferViz struct {
-	canvas *svg.SVG
-
-	BlockHeight int
-	BlockWidth  int
-
+type coordinate struct {
 	x int
 	y int
 }
 
-func NewBufferViz(canvas *svg.SVG, blockHeight int, blockWidth int) BufferViz {
-	b := BufferViz{BlockHeight: blockHeight, BlockWidth: blockWidth}
-	b.canvas = canvas
-	b.x = 0
-	b.y = 0
+type BufferViz struct {
+	canvas *svg.SVG
+
+	BlockSize  Size
+	MarginSize Size
+
+	currentPos coordinate
+}
+
+func NewBufferViz(canvas *svg.SVG, blockSize Size, marginSize Size) BufferViz {
+	b := BufferViz{
+		canvas:     canvas,
+		BlockSize:  blockSize,
+		MarginSize: marginSize,
+		currentPos: coordinate{x: 0, y: 0},
+	}
 	return b
 }
 
-func (b *BufferViz) getRelationDrawSize(relation db.Relation) (int, int) {
-	numBuffers := len(relation.Fsm)
-	blocksPerLine := int(math.Sqrt(float64(numBuffers))) + 1
-	lines := numBuffers / blocksPerLine
-	return blocksPerLine * b.BlockWidth, lines * b.BlockHeight
+func (b *BufferViz) getRelationSize(relation db.Relation) Size {
+	numBuffers := float64(len(relation.Fsm))
+	blocksPerLine := math.Ceil(math.Sqrt(float64(numBuffers)))
+	lines := math.Ceil(numBuffers / blocksPerLine)
+	res := Size{int(blocksPerLine), int(lines)}
+	res.add(b.MarginSize)
+	return res
 }
 
-func (b *BufferViz) getAncillaryRelationDrawSize(table db.Table) (int, int) {
-	maxHeight := 0
-	drawWidth := 0
-
+func (b *BufferViz) getAncillarySizes(table db.Table) (sizes []Size) {
 	for _, index := range table.Indexes {
-		width, height := b.getRelationDrawSize(index)
-		drawWidth += width + b.BlockWidth
-		if height > maxHeight {
-			maxHeight = height
-		}
+		sizes = append(sizes, b.getRelationSize(index))
 	}
 
 	if table.Toast != nil {
 		toast := table.Toast
-		width, height := b.getRelationDrawSize(toast.Relation)
-		drawWidth += width + b.BlockWidth
-		if height > maxHeight {
-			maxHeight = height
-		}
-
-		width, height = b.getRelationDrawSize(toast.Index)
-		drawWidth += width + b.BlockWidth
-		if height > maxHeight {
-			maxHeight = height
-		}
+		sizes = append(sizes, b.getRelationSize(toast.Relation))
+		sizes = append(sizes, b.getRelationSize(toast.Index))
 	}
 
-	return drawWidth, maxHeight
+	return sizes
 }
 
-func (b *BufferViz) getDrawSize(table db.Table) (int, int) {
-	tableWidth, tableHeight := b.getRelationDrawSize(table.Relation)
-	ancillaryWidth, ancillaryHeigh := b.getAncillaryRelationDrawSize(table)
-	totalWidth := tableWidth
-	if ancillaryWidth > totalWidth {
-		totalWidth = ancillaryWidth
+func compareX(a Size, b Size) int {
+	return cmp.Compare(a.Width, b.Height)
+}
+
+func compareY(a Size, b Size) int {
+	return cmp.Compare(a.Width, b.Height)
+}
+
+func (b *BufferViz) getDrawSize(table db.Table) (res Size) {
+	relationSize := b.getRelationSize(table.Relation)
+	ancillarySizes := b.getAncillarySizes(table)
+
+	// Names take 2 block height
+	res.Height = relationSize.Height + 2*b.BlockSize.Height
+	res.Height += slices.MaxFunc(ancillarySizes, compareY).Height + 2*b.BlockSize.Height
+
+	bottomWidth := res.Width
+	topWidth := len(ancillarySizes)
+	for _, c := range ancillarySizes {
+		topWidth += c.Width
 	}
-	return ancillaryWidth + 2, tableHeight + ancillaryHeigh + 2
+
+	res.Width = bottomWidth
+	if topWidth > bottomWidth {
+		res.Width = topWidth
+	}
+
+	return res
 }
 
-func (b *BufferViz) GetFsmColor(fsmValue int16) string {
+func (b *BufferViz) getFsmColor(fsmValue int16) string {
 	percent := int((float64(fsmValue) / 8192) * 100)
 	return fmt.Sprintf("fill: color-mix(in srgb, green %d%%, red)", percent)
 }
 
-func (b *BufferViz) DrawName(blocksPerLine int, relation db.Relation) {
-	relationWidth := blocksPerLine * b.BlockWidth
-	xPos := b.x + relationWidth/2
-	yPos := b.y + b.BlockHeight/2
+func (b *BufferViz) drawName(blocksPerLine int, relation db.Relation) {
+	relationWidth := blocksPerLine * b.BlockSize.Width
+	xPos := b.currentPos.x + relationWidth/2
+	yPos := b.currentPos.y + b.BlockSize.Height/2
 	b.canvas.Text(xPos, yPos, relation.Name, "text-anchor:middle;font-size:20px")
 }
 
-func (b *BufferViz) DrawRelation(relation db.Relation) (int, int) {
+func (b *BufferViz) drawRelation(relation db.Relation) (int, int) {
 	numBuffers := len(relation.Fsm)
 	blocksPerLine := int(math.Sqrt(float64(numBuffers))) + 1
 	lines := numBuffers / blocksPerLine
 
-	b.DrawName(blocksPerLine, relation)
+	b.drawName(blocksPerLine, relation)
 
-	xOffset := b.x
-	yOffset := b.y + b.BlockHeight
+	pos := b.currentPos
+	pos.y += b.BlockSize.Height
 
 	b.canvas.Gstyle("stroke-width:2;stroke:black;fill:white")
 	for line := range blocksPerLine {
@@ -103,10 +117,10 @@ func (b *BufferViz) DrawRelation(relation db.Relation) (int, int) {
 			if bufno >= numBuffers {
 				break
 			}
-			x := xOffset + column*b.BlockWidth
-			y := yOffset + line*b.BlockHeight
-			style := b.GetFsmColor(relation.Fsm[bufno])
-			b.canvas.Rect(x, y, b.BlockWidth, b.BlockHeight, style)
+			x := pos.x + column*b.BlockSize.Width
+			y := pos.y + line*b.BlockSize.Height
+			style := b.getFsmColor(relation.Fsm[bufno])
+			b.canvas.Rect(x, y, b.BlockSize.Width, b.BlockSize.Height, style)
 		}
 	}
 	b.canvas.Gend()
@@ -119,27 +133,27 @@ func (b *BufferViz) DrawRelation(relation db.Relation) (int, int) {
 				break
 			}
 			if bufno%50 == 0 {
-				x := xOffset + column*b.BlockWidth + b.BlockWidth/2
-				y := yOffset + line*b.BlockHeight + b.BlockHeight/2
+				x := pos.x + column*b.BlockSize.Width + b.BlockSize.Width/2
+				y := pos.y + line*b.BlockSize.Height + b.BlockSize.Height/2
 				b.canvas.Text(x, y, fmt.Sprint(bufno))
 			}
 		}
 	}
 	b.canvas.Gend()
-	return blocksPerLine * b.BlockWidth, lines * b.BlockHeight
+	return blocksPerLine * b.BlockSize.Width, lines * b.BlockSize.Height
 }
 
 func (b *BufferViz) DrawTable(table db.Table) {
-	w, h := b.getDrawSize(table)
-	b.canvas.Start(w, h)
+	drawSize := b.getDrawSize(table)
+	b.canvas.Start(drawSize.Width*b.BlockSize.Width, drawSize.Height*b.BlockSize.Height)
 
 	// Track height to know the position for the relation
 	maxHeight := 0
 
 	for _, index := range table.Indexes {
 		logrus.Infof("Drawing index %s", index.Name)
-		width, height := b.DrawRelation(index)
-		b.x += width + b.BlockWidth
+		width, height := b.drawRelation(index)
+		b.currentPos.x += width + b.BlockSize.Width
 		if height > maxHeight {
 			maxHeight = height
 		}
@@ -148,24 +162,24 @@ func (b *BufferViz) DrawTable(table db.Table) {
 	if table.Toast != nil {
 		toast := table.Toast
 		logrus.Infof("Drawing toast %s", toast.Name)
-		width, height := b.DrawRelation(toast.Relation)
-		b.x += width + b.BlockWidth
+		width, height := b.drawRelation(toast.Relation)
+		b.currentPos.x += width + b.MarginSize.Width
 		if height > maxHeight {
 			maxHeight = height
 		}
 
 		logrus.Infof("Drawing toast index %s", toast.Index.Name)
-		width, height = b.DrawRelation(toast.Index)
-		b.x += width + b.BlockWidth
+		width, height = b.drawRelation(toast.Index)
+		b.currentPos.x += width + b.MarginSize.Width
 		if height > maxHeight {
 			maxHeight = height
 		}
 	}
 
-	b.x = 0
-	b.y = maxHeight + b.BlockHeight*2
+	b.currentPos.x = 0
+	b.currentPos.y = maxHeight + b.MarginSize.Height
 	logrus.Infof("Drawing table %s", table.Name)
-	b.DrawRelation(table.Relation)
+	b.drawRelation(table.Relation)
 
 	b.canvas.End()
 }
