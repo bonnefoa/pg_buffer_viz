@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 
+	"github.com/bonnefoa/pg_buffer_viz/pkg/model"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rotisserie/eris"
@@ -11,27 +12,6 @@ import (
 
 type DbPool struct {
 	*pgxpool.Pool
-}
-
-type Relation struct {
-	Name string
-	Fsm  []int16
-}
-
-type Table struct {
-	Relation
-	Indexes []Relation
-	Toast   *Toast
-}
-
-type Toast struct {
-	Relation
-	Index Relation
-}
-
-type RelationFreeSpace struct {
-	Name string
-	Fsm  []int
 }
 
 func NewDbPool(ctx context.Context, connectUrl string) (*DbPool, error) {
@@ -65,18 +45,18 @@ func (d *DbPool) FetchFsm(ctx context.Context, relationName string) ([]int16, er
 	return pgx.CollectRows(rows, pgx.RowTo[int16])
 }
 
-func (d *DbPool) FetchRelationFromOid(ctx context.Context, relationName string, oid uint32) (Relation, error) {
+func (d *DbPool) FetchRelationFromOid(ctx context.Context, relationName string, oid uint32) (model.Relation, error) {
 	avails, err := d.FetchFsmFromOid(ctx, oid)
-	r := Relation{
+	r := model.Relation{
 		Name: relationName,
 		Fsm:  avails,
 	}
 	return r, err
 }
 
-func (d *DbPool) FetchRelation(ctx context.Context, relationName string) (Relation, error) {
+func (d *DbPool) FetchRelation(ctx context.Context, relationName string) (model.Relation, error) {
 	avails, err := d.FetchFsm(ctx, relationName)
-	r := Relation{
+	r := model.Relation{
 		Name: relationName,
 		Fsm:  avails,
 	}
@@ -95,7 +75,7 @@ func (d *DbPool) ListRelationNames(ctx context.Context) ([]string, error) {
 	return relationNames, err
 }
 
-func (d *DbPool) FetchIndexes(ctx context.Context, relationName string) ([]Relation, error) {
+func (d *DbPool) FetchIndexes(ctx context.Context, relationName string) ([]model.Relation, error) {
 	logrus.Debugf("Fetch indexes for relation '%s'", relationName)
 	rows, err := d.Query(ctx, "select indexname from pg_indexes where tablename=$1", relationName)
 	if err != nil {
@@ -105,7 +85,7 @@ func (d *DbPool) FetchIndexes(ctx context.Context, relationName string) ([]Relat
 	if err != nil {
 		return nil, eris.Wrap(err, "Reading index failed")
 	}
-	indexes := make([]Relation, 0)
+	indexes := make([]model.Relation, 0)
 	for _, indexName := range indexNames {
 		r, err := d.FetchRelation(ctx, indexName)
 		if err != nil {
@@ -123,7 +103,7 @@ type ToastResponse struct {
 	IndexName    string
 }
 
-func (d *DbPool) FetchToast(ctx context.Context, relationName string) (*Toast, error) {
+func (d *DbPool) FetchToast(ctx context.Context, relationName string) (*model.Toast, error) {
 	logrus.Debugf("Fetch toast for relation '%s'", relationName)
 	rows, err := d.Query(ctx, `WITH toast_ids AS (
     SELECT c.reltoastrelid as oid, i.indexrelid as idx_oid
@@ -150,10 +130,10 @@ WHERE t.oid = t_oids.oid AND ti.oid = t_oids.idx_oid`, relationName)
 	if err != nil {
 		return nil, err
 	}
-	return &Toast{relation, index}, nil
+	return &model.Toast{Relation: relation, Index: index}, nil
 }
 
-func (d *DbPool) FetchTable(ctx context.Context, relationName string) (table Table, err error) {
+func (d *DbPool) FetchTable(ctx context.Context, relationName string) (table model.Table, err error) {
 	logrus.Infof("Fetch buffer information for table '%s'", relationName)
 	table.Relation, err = d.FetchRelation(ctx, relationName)
 	if err != nil {

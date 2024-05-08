@@ -12,6 +12,7 @@ import (
 	"github.com/bonnefoa/pg_buffer_viz/pkg/bufferviz"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/db"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/httpserver"
+	"github.com/bonnefoa/pg_buffer_viz/pkg/model"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/render"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
 	"github.com/rotisserie/eris"
@@ -57,7 +58,7 @@ func generateFun(cmd *cobra.Command, args []string) {
 	}
 
 	canvas := render.NewFileCanvas(output)
-	b := bufferviz.NewBufferViz(canvas.SVG, bufferviz.Size{Width: 30, Height: 30}, bufferviz.Size{Width: 3, Height: 3})
+	b := bufferviz.NewBufferViz(canvas.SVG, model.Size{Width: 30, Height: 30}, model.Size{Width: 3, Height: 3})
 	b.DrawTable(table)
 
 	os.Exit(0)
