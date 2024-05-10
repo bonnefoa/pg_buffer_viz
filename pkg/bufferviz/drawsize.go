@@ -1,23 +1,16 @@
 package bufferviz
 
 import (
-	"math"
-
 	"github.com/bonnefoa/pg_buffer_viz/pkg/model"
 	"github.com/sirupsen/logrus"
 )
 
 func (b *BufferViz) getRelationSize(relation model.Relation) (res model.Size) {
-	numBuffers := float64(len(relation.Fsm))
-	if numBuffers == 0 {
-		return
-	}
-	width := math.Ceil(math.Sqrt(numBuffers))
-	height := math.Ceil(numBuffers / width)
-	res = model.Size{
-		Width:  int(width),
-		Height: int(height)}
+	res = relation.GetRelationSize()
 	res.Add(b.MarginSize)
+	if res.Width <= 5 {
+		res.Width = 10
+	}
 	logrus.Infof("Size of relation %s: %v", relation.Name, res)
 	return res
 }

@@ -27,6 +27,11 @@ func NewBufferViz(canvas *svg.SVG, blockSize model.Size, marginSize model.Size) 
 	return b
 }
 
+func (b *BufferViz) SetCanvas(canvas *svg.SVG) {
+	b.canvas = canvas
+	b.currentPos = model.Coordinate{X: 0, Y: 0}
+}
+
 func (b *BufferViz) getFsmColor(fsmValue int16) string {
 	percent := int((float64(fsmValue) / 8192) * 100)
 	return fmt.Sprintf("fill: color-mix(in srgb, green %d%%, red)", percent)
@@ -34,10 +39,8 @@ func (b *BufferViz) getFsmColor(fsmValue int16) string {
 
 func (b *BufferViz) drawName(relation model.Relation) {
 	xPos := b.currentPos.X * b.BlockSize.Width
-	yPos := b.currentPos.Y * b.BlockSize.Height
-	b.canvas.Text(xPos, yPos, relation.Name,
-		// "text-align:left;dominant-baseline=hanging;font-size:20px")
-		"text-align:left;font-size:20px")
+	yPos := (float64(b.currentPos.Y) + float64(0.5)) * float64(b.BlockSize.Height)
+	b.canvas.Text(xPos, int(yPos), relation.Name, "text-align:left;font-size:20px")
 }
 
 func (b *BufferViz) drawRelation(relation model.Relation) model.Size {

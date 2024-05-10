@@ -3,8 +3,6 @@ package httpserver
 import (
 	"net/http"
 
-	"github.com/bonnefoa/pg_buffer_viz/pkg/bufferviz"
-	"github.com/bonnefoa/pg_buffer_viz/pkg/model"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/render"
 	"github.com/gin-gonic/gin"
 	"github.com/rotisserie/eris"
@@ -23,9 +21,8 @@ func (s *HttpServer) statsRoute(c *gin.Context) {
 
 func (s *HttpServer) bufferVizRoute(c *gin.Context) {
 	canvas := render.NewCanvasIo(c.Writer)
-	b := bufferviz.NewBufferViz(canvas.SVG,
-		model.Size{Width: 30, Height: 30},
-		model.Size{Width: 3, Height: 3})
+	s.bufferViz.SetCanvas(canvas.SVG)
+
 	logrus.Info(c.Params)
 	tableName := c.Params.ByName("table")
 
@@ -35,7 +32,7 @@ func (s *HttpServer) bufferVizRoute(c *gin.Context) {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	b.DrawTable(table)
+	s.bufferViz.DrawTable(table)
 	canvas.End()
 	c.Header("Content-Type", "image/svg+xml")
 }

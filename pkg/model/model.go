@@ -20,10 +20,10 @@ type Toast struct {
 
 func (r *Relation) GetRelationSize() Size {
 	numBuffers := len(r.Fsm)
-	width := int(math.Sqrt(float64(numBuffers))) + 1
-	height := numBuffers / width
+	width := math.Ceil(math.Sqrt(float64(numBuffers)))
+	height := math.Ceil(float64(numBuffers) / width)
 
-	return Size{width, height}
+	return Size{int(width), int(height)}
 }
 
 func (r *Relation) GetNumbBuffers() int {

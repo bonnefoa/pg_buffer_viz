@@ -6,14 +6,17 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/bonnefoa/pg_buffer_viz/pkg/bufferviz"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/db"
+	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
 	"github.com/gin-gonic/gin"
 	"github.com/rotisserie/eris"
 	"github.com/sirupsen/logrus"
 )
 
 type HttpServer struct {
-	db *db.DbPool
+	db        *db.DbPool
+	bufferViz *bufferviz.BufferViz
 }
 
 func newHttpServer(ctx context.Context) (*HttpServer, error) {
@@ -22,7 +25,13 @@ func newHttpServer(ctx context.Context) (*HttpServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	server := &HttpServer{db: dbConnection}
+	b := bufferviz.NewBufferViz(
+		nil,
+		util.GetBlockSize(),
+		util.GetMarginSize(),
+	)
+
+	server := &HttpServer{bufferViz: &b, db: dbConnection}
 	return server, nil
 }
 
