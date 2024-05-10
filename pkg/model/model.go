@@ -1,5 +1,7 @@
 package model
 
+import "math"
+
 type Relation struct {
 	Name string
 	Fsm  []int16
@@ -16,11 +18,14 @@ type Toast struct {
 	Index Relation
 }
 
-type RelationFreeSpace struct {
-	Name string
-	Fsm  []int
+func (r *Relation) GetRelationSize() Size {
+	numBuffers := len(r.Fsm)
+	width := int(math.Sqrt(float64(numBuffers))) + 1
+	height := numBuffers / width
+
+	return Size{width, height}
 }
 
-//func (r *Relation) GetRelationSize() int {
-//	return math.Sqrt(len(r.Fsm))
-//}
+func (r *Relation) GetNumbBuffers() int {
+	return len(r.Fsm)
+}

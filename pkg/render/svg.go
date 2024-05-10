@@ -7,20 +7,25 @@ import (
 
 	svg "github.com/ajstarks/svgo"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/util"
+	"github.com/sirupsen/logrus"
 )
 
-type FileCanvas struct {
+type CanvasFile struct {
 	*svg.SVG
 	file *os.File
 	bw   *bufio.Writer
 }
 
-type Canvas struct {
+type CanvasIo struct {
 	*svg.SVG
 }
 
-func NewFileCanvas(filename string) *FileCanvas {
-	var c FileCanvas
+type Canvas interface {
+	End()
+}
+
+func NewCanvasFile(filename string) *CanvasFile {
+	var c CanvasFile
 	var err error
 
 	c.file, err = os.Create(filename)
@@ -31,17 +36,17 @@ func NewFileCanvas(filename string) *FileCanvas {
 	return &c
 }
 
-func NewCanvas(w io.Writer) *Canvas {
-	var c Canvas
-	c.SVG = svg.New(w)
+func NewCanvasIo(w io.Writer) *CanvasIo {
+	c := CanvasIo{svg.New(w)}
 	return &c
 }
 
-func (c *Canvas) End() {
+func (c *CanvasIo) End() {
 	c.SVG.End()
 }
 
-func (c *FileCanvas) End() {
+func (c *CanvasFile) End() {
+	logrus.Infof("Flushing file")
 	c.SVG.End()
 	err := c.bw.Flush()
 	util.FatalIf(err)

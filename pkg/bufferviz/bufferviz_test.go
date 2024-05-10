@@ -39,16 +39,25 @@ func TestRelationSize(t *testing.T) {
 		expectedSize model.Size
 		margin       model.Size
 	}{
-		{"Test 3 elements no margin", getTestRelation(3), model.Size{Width: 2, Height: 2}, model.Size{Width: 0, Height: 0}},
-		{"Test 4 elements no margin", getTestRelation(4), model.Size{Width: 2, Height: 2}, model.Size{Width: 0, Height: 0}},
-		{"Test 5 elements no margin", getTestRelation(5), model.Size{Width: 3, Height: 2}, model.Size{Width: 0, Height: 0}},
-		{"Test 9 elements no margin", getTestRelation(9), model.Size{Width: 3, Height: 3}, model.Size{Width: 0, Height: 0}},
-		{"Test 256 elements no margin", getTestRelation(256), model.Size{Width: 16, Height: 16}, model.Size{Width: 0, Height: 0}},
-		{"Test 257 elements no margin", getTestRelation(257), model.Size{Width: 17, Height: 16}, model.Size{Width: 0, Height: 0}},
+		{"Test 3 elements no margin", getTestRelation(3),
+			model.Size{Width: 2, Height: 2}, model.Size{Width: 0, Height: 0}},
+		{"Test 4 elements no margin", getTestRelation(4),
+			model.Size{Width: 2, Height: 2}, model.Size{Width: 0, Height: 0}},
+		{"Test 5 elements no margin", getTestRelation(5),
+			model.Size{Width: 3, Height: 2}, model.Size{Width: 0, Height: 0}},
+		{"Test 9 elements no margin", getTestRelation(9),
+			model.Size{Width: 3, Height: 3}, model.Size{Width: 0, Height: 0}},
+		{"Test 256 elements no margin", getTestRelation(256),
+			model.Size{Width: 16, Height: 16}, model.Size{Width: 0, Height: 0}},
+		{"Test 257 elements no margin", getTestRelation(257),
+			model.Size{Width: 17, Height: 16}, model.Size{Width: 0, Height: 0}},
 
-		{"Test 3 elements 1_2 margin", getTestRelation(3), model.Size{Width: 3, Height: 4}, model.Size{Width: 1, Height: 2}},
-		{"Test 4 elements 1_2 margin", getTestRelation(4), model.Size{Width: 3, Height: 4}, model.Size{Width: 1, Height: 2}},
-		{"Test 5 elements 1_2 margin", getTestRelation(5), model.Size{Width: 4, Height: 4}, model.Size{Width: 1, Height: 2}},
+		{"Test 3 elements 1_2 margin", getTestRelation(3),
+			model.Size{Width: 3, Height: 4}, model.Size{Width: 1, Height: 2}},
+		{"Test 4 elements 1_2 margin", getTestRelation(4),
+			model.Size{Width: 3, Height: 4}, model.Size{Width: 1, Height: 2}},
+		{"Test 5 elements 1_2 margin", getTestRelation(5),
+			model.Size{Width: 4, Height: 4}, model.Size{Width: 1, Height: 2}},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -66,9 +75,12 @@ func TestAncillarySize(t *testing.T) {
 		expectedSize model.Size
 		margin       model.Size
 	}{
-		{"Test only index", getTestTable(257, []int{9}, 0, 0), model.Size{Width: 3, Height: 3}, model.Size{Width: 0, Height: 0}},
-		{"Test index plus toast no margin", getTestTable(257, []int{9}, 3, 3), model.Size{Width: 3 + 2 + 2, Height: 3}, model.Size{Width: 0, Height: 0}},
-		{"Test index plus toast 1_1 margin", getTestTable(257, []int{9}, 3, 3), model.Size{Width: 3 + 2 + 2 + 3, Height: 3 + 1}, model.Size{Width: 1, Height: 1}},
+		{"Test only index", getTestTable(257, []int{9}, 0, 0),
+			model.Size{Width: 3, Height: 3}, model.Size{Width: 0, Height: 0}},
+		{"Test index plus toast no margin", getTestTable(257, []int{9}, 3, 3),
+			model.Size{Width: 3 + 2 + 2, Height: 3}, model.Size{Width: 0, Height: 0}},
+		{"Test index plus toast 1_1 margin", getTestTable(257, []int{9}, 3, 3),
+			model.Size{Width: 3 + 2 + 2 + 3, Height: 3 + 1}, model.Size{Width: 1, Height: 1}},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

@@ -57,9 +57,14 @@ func generateFun(cmd *cobra.Command, args []string) {
 		logrus.Fatalf("Error when fetching table information: %s", eris.ToString(err, true))
 	}
 
-	canvas := render.NewFileCanvas(output)
-	b := bufferviz.NewBufferViz(canvas.SVG, model.Size{Width: 30, Height: 30}, model.Size{Width: 3, Height: 3})
+	canvas := render.NewCanvasFile(output)
+	b := bufferviz.NewBufferViz(
+		canvas.SVG,
+		model.Size{Width: 30, Height: 30},
+		model.Size{Width: 3, Height: 3},
+	)
 	b.DrawTable(table)
+	canvas.End()
 
 	os.Exit(0)
 }

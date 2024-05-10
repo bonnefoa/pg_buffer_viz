@@ -15,8 +15,8 @@ func (b *BufferViz) getRelationSize(relation model.Relation) (res model.Size) {
 	width := math.Ceil(math.Sqrt(numBuffers))
 	height := math.Ceil(numBuffers / width)
 	res = model.Size{
-		int(width),
-		int(height)}
+		Width:  int(width),
+		Height: int(height)}
 	res.Add(b.MarginSize)
 	logrus.Infof("Size of relation %s: %v", relation.Name, res)
 	return res
