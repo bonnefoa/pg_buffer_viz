@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 
 	"github.com/bonnefoa/pg_buffer_viz/pkg/model"
 	"github.com/jackc/pgx/v5"
@@ -118,6 +119,9 @@ WHERE t.oid = t_oids.oid AND ti.oid = t_oids.idx_oid`, relationName)
 	}
 
 	toastResponse, err := pgx.CollectOneRow(rows, pgx.RowToStructByPos[ToastResponse])
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, eris.Wrap(err, "Error collecting toast response")
 	}
