@@ -20,8 +20,13 @@ type CanvasIo struct {
 	*svg.SVG
 }
 
-type Canvas interface {
-	End()
+func AddHeader(s *svg.SVG) {
+	svg_css, err := os.ReadFile("resources/svg_css.css")
+	util.FatalIf(err)
+	svg_js, err := os.ReadFile("resources/svg_functions.js")
+	util.FatalIf(err)
+	s.Style("text/css", string(svg_css))
+	s.Script("text/ecmascript", string(svg_js))
 }
 
 func NewCanvasFile(filename string) *CanvasFile {

@@ -33,6 +33,7 @@ func (s *HttpServer) bufferVizRoute(c *gin.Context) {
 		return
 	}
 	s.bufferViz.DrawTable(table)
+	s.bufferViz.AddFooter()
 	canvas.End()
 	c.Header("Content-Type", "image/svg+xml")
 }

@@ -5,6 +5,7 @@ import (
 
 	svg "github.com/ajstarks/svgo"
 	"github.com/bonnefoa/pg_buffer_viz/pkg/model"
+	"github.com/bonnefoa/pg_buffer_viz/pkg/render"
 	"github.com/sirupsen/logrus"
 )
 
@@ -14,22 +15,25 @@ type BufferViz struct {
 	BlockSize  model.Size
 	MarginSize model.Size
 
-	currentPos model.Coordinate
+	currentCoordinate model.Coordinate
 }
+
+const svgtop = `<?xml version="1.0"?>
+<svg width="%d" height="%d" onload="init(evt)" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`
 
 func NewBufferViz(canvas *svg.SVG, blockSize model.Size, marginSize model.Size) BufferViz {
 	b := BufferViz{
-		canvas:     canvas,
-		BlockSize:  blockSize,
-		MarginSize: marginSize,
-		currentPos: model.Coordinate{X: 0, Y: 0},
+		canvas:            canvas,
+		BlockSize:         blockSize,
+		MarginSize:        marginSize,
+		currentCoordinate: model.Coordinate{X: 0, Y: 0},
 	}
 	return b
 }
 
 func (b *BufferViz) SetCanvas(canvas *svg.SVG) {
 	b.canvas = canvas
-	b.currentPos = model.Coordinate{X: 0, Y: 0}
+	b.currentCoordinate = model.Coordinate{X: 0, Y: 0}
 }
 
 func (b *BufferViz) getFsmColor(fsmValue int16) string {
@@ -37,10 +41,14 @@ func (b *BufferViz) getFsmColor(fsmValue int16) string {
 	return fmt.Sprintf("fill: color-mix(in srgb, green %d%%, red)", percent)
 }
 
+func (b *BufferViz) coordinateToPosition(c model.Coordinate) (x, y int) {
+	return c.X * b.BlockSize.Width, c.Y * b.BlockSize.Height
+}
+
 func (b *BufferViz) drawName(relation model.Relation) {
-	xPos := b.currentPos.X * b.BlockSize.Width
-	yPos := (float64(b.currentPos.Y) + float64(0.5)) * float64(b.BlockSize.Height)
-	b.canvas.Text(xPos, int(yPos), relation.Name, "text-align:left;font-size:20px")
+	xPos := b.currentCoordinate.X * b.BlockSize.Width
+	yPos := (float64(b.currentCoordinate.Y) + float64(0.5)) * float64(b.BlockSize.Height)
+	b.canvas.Text(xPos, int(yPos), relation.Name, "text-align:left;font-size:10px")
 }
 
 func (b *BufferViz) drawRelation(relation model.Relation) model.Size {
@@ -49,60 +57,45 @@ func (b *BufferViz) drawRelation(relation model.Relation) model.Size {
 
 	b.drawName(relation)
 
-	pos := b.currentPos
-	pos.Y += 1
+	coordinate := b.currentCoordinate
+	coordinate.Y += 1
 
 	// Draw one rect per block
-	b.canvas.Gstyle("stroke-width:2;stroke:black;fill:white")
 	for line := range relationSize.Width {
 		for column := range relationSize.Width {
 			bufno := line*relationSize.Width + column
 			if bufno >= numBuffers {
 				break
 			}
-			x := (pos.X + column) * b.BlockSize.Width
-			y := (pos.Y + line) * b.BlockSize.Height
+			x := (coordinate.X + column) * b.BlockSize.Width
+			y := (coordinate.Y + line) * b.BlockSize.Height
 			style := b.getFsmColor(relation.Fsm[bufno])
-			b.canvas.Rect(x, y, b.BlockSize.Width, b.BlockSize.Height, style)
+			blockId := fmt.Sprintf("id=\"%s_%d\"", relation.Name, bufno)
+
+			b.canvas.Rect(x, y, b.BlockSize.Width, b.BlockSize.Height, blockId, "class=\"block\"", style)
 		}
 	}
-	b.canvas.Gend()
 	relationSize.Add(b.MarginSize)
 
-	//	b.canvas.Gstyle("text-anchor:middle;font-size:20px;fill:black;dominant-baseline=middle")
-	//	for line := range relationSize.Width {
-	//		for column := range relationSize.Width {
-	//			bufno := line*relationSize.Width + column
-	//			if bufno > numBuffers {
-	//				break
-	//			}
-	//			if bufno%50 == 0 {
-	//				x := pos.x + column*b.BlockSize.Width + b.BlockSize.Width/2
-	//				y := pos.y + line*b.BlockSize.Height + b.BlockSize.Height/2
-	//				b.canvas.Text(x, y, fmt.Sprint(bufno))
-	//			}
-	//		}
-	//	}
-	//	b.canvas.Gend()
 	return relationSize
 }
 
 func (b *BufferViz) DrawTable(table model.Table) {
 	drawSize := b.getDrawSize(table)
-	b.canvas.Start(
-		drawSize.Width*b.BlockSize.Width,
-		drawSize.Height*b.BlockSize.Height,
-	)
+	width := drawSize.Width * b.BlockSize.Width
+	height := drawSize.Height * b.BlockSize.Height
+	b.canvas.Start(width, height, "onload=\"init(evt)\"")
+	render.AddHeader(b.canvas)
 
 	// Track height to know the position for the relation
 	totalSize := model.Size{Width: 0, Height: 0}
-	initialPos := b.currentPos
+	initialPos := b.currentCoordinate
 
 	for _, index := range table.Indexes {
 		logrus.Infof("Drawing index %s", index.Name)
 		relationSize := b.drawRelation(index)
 
-		b.currentPos.X += relationSize.Width
+		b.currentCoordinate.X += relationSize.Width
 		totalSize.AddWidthMaxHeight(relationSize)
 	}
 
@@ -110,18 +103,24 @@ func (b *BufferViz) DrawTable(table model.Table) {
 		toast := table.Toast
 		logrus.Infof("Drawing toast %s", toast.Name)
 		toastSize := b.drawRelation(toast.Relation)
-		b.currentPos.X += toastSize.Width
+		b.currentCoordinate.X += toastSize.Width
 		totalSize.AddWidthMaxHeight(toastSize)
 
-		logrus.Infof("Drawing toast index %s at pos %v", toast.Index.Name, b.currentPos)
+		logrus.Infof("Drawing toast index %s at coord %v", toast.Index.Name, b.currentCoordinate)
 		toastIndexSize := b.drawRelation(toast.Index)
-		b.currentPos.X += toastIndexSize.Width
+		b.currentCoordinate.X += toastIndexSize.Width
 		totalSize.AddWidthMaxHeight(toastIndexSize)
 	}
 
-	b.currentPos = initialPos
-	b.currentPos.AddHeight(totalSize)
+	b.currentCoordinate = initialPos
+	b.currentCoordinate.AddHeight(totalSize)
 
-	logrus.Infof("Drawing table %s at pos %v", table.Name, b.currentPos)
-	b.drawRelation(table.Relation)
+	//	logrus.Infof("Drawing table %s at coord %v", table.Name, b.currentCoordinate)
+	//	relationSize := b.drawRelation(table.Relation)
+	//	b.currentCoordinate.AddHeight(relationSize)
+}
+
+func (b *BufferViz) AddFooter() {
+	x, y := b.coordinateToPosition(b.currentCoordinate)
+	b.canvas.Text(x, y, "Details: ", "id=\"details\"", "text-align:left;font-size:10px")
 }

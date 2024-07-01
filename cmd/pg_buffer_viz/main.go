@@ -63,6 +63,7 @@ func generateFun(cmd *cobra.Command, args []string) {
 		util.GetMarginSize(),
 	)
 	b.DrawTable(table)
+	b.AddFooter()
 	canvas.End()
 
 	os.Exit(0)
