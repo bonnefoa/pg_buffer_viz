@@ -27,6 +27,14 @@ func AddHeader(s *svg.SVG) {
 	util.FatalIf(err)
 	s.Style("text/css", string(svg_css))
 	s.Script("text/ecmascript", string(svg_js))
+
+	offColors := make([]svg.Offcolor, 0)
+	offColors = append(offColors, svg.Offcolor{Offset: 5, Color: "#eeeeee", Opacity: 1})
+	offColors = append(offColors, svg.Offcolor{Offset: 95, Color: "#eeeeb0", Opacity: 1})
+	s.Def()
+	s.LinearGradient("background", 0, 0, 0, 100, offColors)
+	s.DefEnd()
+
 }
 
 func NewCanvasFile(filename string) *CanvasFile {

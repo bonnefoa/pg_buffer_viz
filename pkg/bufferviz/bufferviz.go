@@ -18,22 +18,19 @@ type BufferViz struct {
 	currentCoordinate model.Coordinate
 }
 
-const svgtop = `<?xml version="1.0"?>
-<svg width="%d" height="%d" onload="init(evt)" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`
-
 func NewBufferViz(canvas *svg.SVG, blockSize model.Size, marginSize model.Size) BufferViz {
 	b := BufferViz{
 		canvas:            canvas,
 		BlockSize:         blockSize,
 		MarginSize:        marginSize,
-		currentCoordinate: model.Coordinate{X: 0, Y: 0},
+		currentCoordinate: model.Coordinate{X: 1, Y: 1},
 	}
 	return b
 }
 
 func (b *BufferViz) SetCanvas(canvas *svg.SVG) {
 	b.canvas = canvas
-	b.currentCoordinate = model.Coordinate{X: 0, Y: 0}
+	b.currentCoordinate = model.Coordinate{X: 1, Y: 1}
 }
 
 func (b *BufferViz) getFsmColor(fsmValue int16) string {
@@ -84,8 +81,10 @@ func (b *BufferViz) DrawTable(table model.Table) {
 	drawSize := b.getDrawSize(table)
 	width := drawSize.Width * b.BlockSize.Width
 	height := drawSize.Height * b.BlockSize.Height
+
 	b.canvas.Start(width, height, "onload=\"init(evt)\"")
 	render.AddHeader(b.canvas)
+	b.canvas.Rect(0, 0, width, height, "fill=\"url(#background)\"")
 
 	// Track height to know the position for the relation
 	totalSize := model.Size{Width: 0, Height: 0}

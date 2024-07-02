@@ -1,5 +1,5 @@
 text { font-family:"Verdana"; font-size:12px; fill:rgb(0, 0, 0); }
-rect { stroke: black; stroke-width: 0.5 }
+.block { stroke: black; stroke-width: 0.5 }
 #search, #ignorecase { opacity:0.1; cursor:pointer; }
 #search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
 #subtitle { text-anchor:middle; font-color:rgb(160, 160, 160); }
