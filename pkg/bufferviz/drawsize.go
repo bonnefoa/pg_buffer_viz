@@ -25,7 +25,8 @@ func (b *BufferViz) getAncillarySize(table model.Table) (res model.Size) {
 		res.AddWidthMaxHeight(b.getRelationSize(toast.Relation))
 		res.AddWidthMaxHeight(b.getRelationSize(toast.Index))
 	}
-
+	// Add space for Details text
+	res.AddWidthMaxHeight(model.Size{Width: 0, Height: 2})
 	return res
 }
 

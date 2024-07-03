@@ -22,12 +22,16 @@ function init(evt) {
 }
 
 function block_mouseover(e) {
-  var info = block_to_id(e.currentTarget);
-  details.nodeValue = "Details: Block " + info;
+    var block = e.currentTarget;
+    block.classList.add("selected");
+    var block_id = block_to_id(block);
+    details.nodeValue = "Details: Block " + block_id;
 }
 
-function block_mouseout() {
-  details.nodeValue = "Details: ";
+function block_mouseout(e) {
+    var block = e.currentTarget;
+    block.classList.remove("selected");
+    details.nodeValue = "Details: ";
 }
 
 // functions

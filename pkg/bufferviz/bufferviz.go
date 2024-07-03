@@ -69,7 +69,7 @@ func (b *BufferViz) drawRelation(relation model.Relation) model.Size {
 			style := b.getFsmColor(relation.Fsm[bufno])
 			blockId := fmt.Sprintf("id=\"%s_%d\"", relation.Name, bufno)
 
-			b.canvas.Rect(x, y, b.BlockSize.Width, b.BlockSize.Height, blockId, "class=\"block\"", style)
+			b.canvas.Rect(x+2, y+2, b.BlockSize.Width-1, b.BlockSize.Height-1, blockId, "class=\"block\"", style)
 		}
 	}
 	relationSize.Add(b.MarginSize)
@@ -82,9 +82,7 @@ func (b *BufferViz) DrawTable(table model.Table) {
 	width := drawSize.Width * b.BlockSize.Width
 	height := drawSize.Height * b.BlockSize.Height
 
-	b.canvas.Start(width, height, "onload=\"init(evt)\"")
-	render.AddHeader(b.canvas)
-	b.canvas.Rect(0, 0, width, height, "fill=\"url(#background)\"")
+	render.StartSVG(b.canvas, width, height)
 
 	// Track height to know the position for the relation
 	totalSize := model.Size{Width: 0, Height: 0}
@@ -114,9 +112,9 @@ func (b *BufferViz) DrawTable(table model.Table) {
 	b.currentCoordinate = initialPos
 	b.currentCoordinate.AddHeight(totalSize)
 
-	//	logrus.Infof("Drawing table %s at coord %v", table.Name, b.currentCoordinate)
-	//	relationSize := b.drawRelation(table.Relation)
-	//	b.currentCoordinate.AddHeight(relationSize)
+	logrus.Infof("Drawing table %s at coord %v", table.Name, b.currentCoordinate)
+	relationSize := b.drawRelation(table.Relation)
+	b.currentCoordinate.AddHeight(relationSize)
 }
 
 func (b *BufferViz) AddFooter() {

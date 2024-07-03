@@ -19,7 +19,7 @@ func (s *HttpServer) statsRoute(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
-func (s *HttpServer) bufferVizRoute(c *gin.Context) {
+func (s *HttpServer) renderTable(c *gin.Context) {
 	canvas := render.NewCanvasIo(c.Writer)
 	s.bufferViz.SetCanvas(canvas.SVG)
 
@@ -79,7 +79,7 @@ func (s *HttpServer) setupRouter() *gin.Engine {
 	router.GET("/stats", s.statsRoute)
 
 	router.GET("/", s.listRelations)
-	router.GET("/buffer_viz/:table", s.bufferVizRoute)
+	router.GET("/buffer_viz/:table", s.renderTable)
 
 	return router
 }

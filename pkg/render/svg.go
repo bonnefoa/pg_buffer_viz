@@ -20,7 +20,8 @@ type CanvasIo struct {
 	*svg.SVG
 }
 
-func AddHeader(s *svg.SVG) {
+func StartSVG(s *svg.SVG, width int, height int) {
+	s.Start(width, height, "onload=\"init(evt)\"")
 	svg_css, err := os.ReadFile("resources/svg_css.css")
 	util.FatalIf(err)
 	svg_js, err := os.ReadFile("resources/svg_functions.js")
@@ -34,7 +35,7 @@ func AddHeader(s *svg.SVG) {
 	s.Def()
 	s.LinearGradient("background", 0, 0, 0, 100, offColors)
 	s.DefEnd()
-
+	s.Rect(0, 0, width, height, "fill=\"url(#background)\"")
 }
 
 func NewCanvasFile(filename string) *CanvasFile {
