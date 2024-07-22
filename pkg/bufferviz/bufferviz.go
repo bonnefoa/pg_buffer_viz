@@ -66,10 +66,11 @@ func (b *BufferViz) drawRelation(relation model.Relation) model.Size {
 			}
 			x := (coordinate.X + column) * b.BlockSize.Width
 			y := (coordinate.Y + line) * b.BlockSize.Height
-			style := b.getFsmColor(relation.Fsm[bufno])
+			fsmBucket := relation.Fsm[bufno] / 32
 			blockId := fmt.Sprintf("id=\"%s_%d\"", relation.Name, bufno)
 
-			b.canvas.Rect(x+2, y+2, b.BlockSize.Width-1, b.BlockSize.Height-1, blockId, "class=\"block\"", style)
+			b.canvas.Rect(x+2, y+2, b.BlockSize.Width-1, b.BlockSize.Height-1, blockId,
+				fmt.Sprintf("class=\"block fsm%d\"", fsmBucket))
 		}
 	}
 	relationSize.Add(b.MarginSize)
